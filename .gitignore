@@ -1,0 +1,34 @@
+# Python environments and caches
+.venv/
+.fastapienv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Frontend dependencies and build output
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Local configuration and generated data
+.env
+.env.*
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+/data/raw/
+/data/processed/
+/models/*.pt
+/models/*.pth
+/models/*.safetensors
+/models/*.ckpt
+/models/pretrained/
+/models/sentiment_macbert/
+/models/risk_pdf/
+
+# OS and editor files
+.DS_Store
+.idea/

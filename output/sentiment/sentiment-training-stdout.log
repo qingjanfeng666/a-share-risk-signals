@@ -1,0 +1,56 @@
+qingjianfeng@LAPTOP-4EF4KIHS:/mnt/d/新建文件夹/pbl xinwen/pbl$ backend/.fastapienv/bin/python training/train_sentiment.py --model models/pretrained/chinese-macbert-base
+device=cuda, train=6342, validation=1585, model=models/pretrained/chinese-macbert-base
+Some weights of BertForSequenceClassification were not initialized from the model checkpoint at models/pretrained/chinese-macbert-base and are newly initialized: ['classifier.bias', 'classifier.weight']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+epoch 1 step 100/1586 train_loss=0.9599
+epoch 1 step 200/1586 train_loss=0.8233
+epoch 1 step 300/1586 train_loss=0.7965
+epoch 1 step 400/1586 train_loss=0.7717
+epoch 1 step 500/1586 train_loss=0.7388
+epoch 1 step 600/1586 train_loss=0.7296
+epoch 1 step 700/1586 train_loss=0.7200
+epoch 1 step 800/1586 train_loss=0.7029
+epoch 1 step 900/1586 train_loss=0.7003
+epoch 1 step 1000/1586 train_loss=0.7062
+epoch 1 step 1100/1586 train_loss=0.7007
+epoch 1 step 1200/1586 train_loss=0.6977
+epoch 1 step 1300/1586 train_loss=0.6922
+epoch 1 step 1400/1586 train_loss=0.6937
+epoch 1 step 1500/1586 train_loss=0.6885
+epoch 1 step 1586/1586 train_loss=0.6874
+{"epoch": 1, "train_loss": 0.6873950543218665, "validation": {"loss": 0.5502054425068083, "accuracy": 0.7987381703470031, "macro_f1": 0.7987066148474401, "by_label": {"negative": {"precision": 0.7962466487935657, "recall": 0.7734375, "f1": 0.7846763540290621}, "neutral": {"precision": 0.744776119402985, "recall": 0.7984, "f1": 0.7706563706563706}, "positive": {"precision": 0.8671586715867159, "recall": 0.8159722222222222, "f1": 0.8407871198568873}}}}
+epoch 2 step 100/1586 train_loss=0.4172
+epoch 2 step 200/1586 train_loss=0.3956
+epoch 2 step 300/1586 train_loss=0.4381
+epoch 2 step 400/1586 train_loss=0.4582
+epoch 2 step 500/1586 train_loss=0.4852
+epoch 2 step 600/1586 train_loss=0.4949
+epoch 2 step 700/1586 train_loss=0.4989
+epoch 2 step 800/1586 train_loss=0.5035
+epoch 2 step 900/1586 train_loss=0.5156
+epoch 2 step 1000/1586 train_loss=0.5139
+epoch 2 step 1100/1586 train_loss=0.5225
+epoch 2 step 1200/1586 train_loss=0.5206
+epoch 2 step 1300/1586 train_loss=0.5220
+epoch 2 step 1400/1586 train_loss=0.5239
+epoch 2 step 1500/1586 train_loss=0.5241
+epoch 2 step 1586/1586 train_loss=0.5241
+{"epoch": 2, "train_loss": 0.5241107143689615, "validation": {"loss": 0.7877520666513533, "accuracy": 0.8025236593059937, "macro_f1": 0.8047602468813134, "by_label": {"negative": {"precision": 0.8, "recall": 0.8645833333333334, "f1": 0.8310387984981228}, "neutral": {"precision": 0.8174904942965779, "recall": 0.688, "f1": 0.7471763683753258}, "positive": {"precision": 0.7919254658385093, "recall": 0.8854166666666666, "f1": 0.8360655737704916}}}}
+epoch 3 step 100/1586 train_loss=0.2506
+epoch 3 step 200/1586 train_loss=0.3266
+epoch 3 step 300/1586 train_loss=0.3062
+epoch 3 step 400/1586 train_loss=0.3257
+epoch 3 step 500/1586 train_loss=0.3431
+epoch 3 step 600/1586 train_loss=0.3419
+epoch 3 step 700/1586 train_loss=0.3574
+epoch 3 step 800/1586 train_loss=0.3490
+epoch 3 step 900/1586 train_loss=0.3457
+epoch 3 step 1000/1586 train_loss=0.3412
+epoch 3 step 1100/1586 train_loss=0.3331
+epoch 3 step 1200/1586 train_loss=0.3422
+epoch 3 step 1300/1586 train_loss=0.3360
+epoch 3 step 1400/1586 train_loss=0.3375
+epoch 3 step 1500/1586 train_loss=0.3372
+epoch 3 step 1586/1586 train_loss=0.3348
+{"epoch": 3, "train_loss": 0.3348107905614944, "validation": {"loss": 0.9649567247565236, "accuracy": 0.8025236593059937, "macro_f1": 0.8071385467895554, "by_label": {"negative": {"precision": 0.8223350253807107, "recall": 0.84375, "f1": 0.8329048843187661}, "neutral": {"precision": 0.7266483516483516, "recall": 0.8464, "f1": 0.7819660014781965}, "positive": {"precision": 0.9049676025917927, "recall": 0.7274305555555556, "f1": 0.8065447545717035}}}}
+Best epoch=3, macro_f1=0.8071, saved_to=models/sentiment_macbert
