@@ -5,7 +5,8 @@
 | 方法与路径 | 返回内容 |
 | --- | --- |
 | `GET /api/health` | `{"status":"ok"}` |
-| `POST /api/auth/register` | 创建账户并登录 |
+| `POST /api/auth/register` | 提交邮箱、密码，发送 8 位注册验证码；返回 `code_sent`，不创建会话；同邮箱重发仍用此端点 |
+| `POST /api/auth/verify` | 提交邮箱、验证码，完成注册并创建会话 |
 | `POST /api/auth/login` | 登录 |
 | `GET /api/auth/me` | 读取当前账户 |
 | `POST /api/auth/logout` | 撤销当前会话 |
@@ -16,6 +17,8 @@
 | `GET /api/stocks/{stock}/risk-trend` | 读取该股票最近最多 30 个交易日的逐日分数，不触发抓取或推理 |
 | `POST /api/stocks/{stock}/risk-refresh` | 手动刷新最新交易日并补算漏掉的交易日；以 NDJSON 逐行返回进度，最后返回最新结果与完整趋势 |
 | `GET /api/risk-runs` | 当前账户最近最多 100 条成功查询，按获取顺序从新到旧排列 |
+
+注册验证码 10 分钟有效、只能使用一次；同邮箱 60 秒内不能重发、每小时最多发送 5 次，输错 5 次后需重新申请。未配置 SMTP 或邮件发送失败时，`register` 返回 503。已有账户保持可登录。
 
 `risk-history` 返回 `stock`、`dataset`、完整测试期的 `period`、该股票记录总数 `total`，以及 `items`。每条记录包含 `date`、`actual_high_risk`，并分别提供 `price`、`text`、`fusion` 三个模型的 `_score` 和 `_alert`。`_alert` 使用训练时在验证集固定的阈值；`actual_high_risk` 是未来三交易日真实结果，只适用于历史回放。`_score` 未校准为实际下跌概率。
 

@@ -49,9 +49,13 @@ a:hover { color: var(--teal-dark); }
 .auth-form input:focus { outline: 3px solid #2b9f9a55; outline-offset: 1px; }
 .auth-hint { margin: -8px 0 4px; color: var(--muted); font-size: 12px; }
 .auth-error { margin: 0; color: var(--risk-dark); font-size: 13px; line-height: 1.5; }
+.auth-notice { margin: 0; color: var(--teal-dark); font-size: 13px; line-height: 1.5; }
 .auth-submit { min-height: 47px; margin-top: 8px; border: 0; border-radius: 8px; background: var(--navy); color: #fff; cursor: pointer; font-weight: 700; }
 .auth-submit:hover { background: #0b6071; }
 .auth-submit:disabled { opacity: .6; cursor: wait; }
+.auth-actions { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; }
+.auth-actions button { padding: 5px 0; border: 0; background: none; color: #0b6072; cursor: pointer; font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.auth-actions button:disabled { opacity: .6; cursor: wait; }
 .auth-footnote { margin: 26px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .page-container { max-width: 1220px; margin: auto; padding: 34px 28px 78px; }
 

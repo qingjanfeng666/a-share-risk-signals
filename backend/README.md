@@ -18,15 +18,21 @@ BACKEND_HOST=127.0.0.1
 BACKEND_PORT=8000
 FRONTEND_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
 SESSION_COOKIE_SECURE=false
+SMTP_HOST=smtp.example.com
+SMTP_PORT=465
+SMTP_SECURITY=ssl
+SMTP_USERNAME=your-address@example.com
+SMTP_PASSWORD=your-smtp-app-password
+SMTP_FROM=your-address@example.com
 ```
 
 前端通过 Next.js 同源 `/api` 转发请求。非本地 HTTPS 部署时设置 `SESSION_COOKIE_SECURE=true`，并只列出实际前端域名。数据库 `backend/data/app.db` 在本机创建，不提交 Git。
 
 ## 账户与会话
 
-`POST /api/auth/register` 用邮箱和至少 12 字符的密码注册并自动登录；`POST /api/auth/login` 登录；`GET /api/auth/me` 检查会话；`POST /api/auth/logout` 撤销会话。密码用 Argon2id 哈希保存，会话 Cookie 设有 HttpOnly 和 SameSite=Lax。除 `/api/health` 外，接口需要有效会话。账户的最新推理结果、运行历史和逐日趋势各自隔离；旧版无账户数据仍在旧表，不自动展示给任何新账户。
+`POST /api/auth/register` 用邮箱和至少 12 字符的密码申请验证码；`POST /api/auth/verify` 用邮箱和 8 位验证码完成注册并登录；`POST /api/auth/login` 登录；`GET /api/auth/me` 检查会话；`POST /api/auth/logout` 撤销会话。验证码 10 分钟有效、只能使用一次，同邮箱 60 秒内不能重发、每小时最多发送 5 次，输错 5 次后需重新申请。未配置 SMTP 时注册返回 503，已有账户仍可登录。密码用 Argon2id 哈希保存，会话 Cookie 设有 HttpOnly 和 SameSite=Lax。除 `/api/health` 与注册登录端点外，业务接口需要有效会话。账户的最新推理结果、运行历史和逐日趋势各自隔离；旧版无账户数据仍在旧表，不自动展示给任何新账户。
 
-登录失败有基础限速。当前没有邮箱验证与密码找回，公网部署还需补齐相关能力、注册限流、HTTPS 和数据库备份。
+登录失败有基础限速。当前没有密码找回。公网部署还需配置代理层全局限流、HTTPS 和数据库备份。SMTP 凭据只放在不提交 Git 的 `.env.local`；587 端口通常配合 `SMTP_SECURITY=starttls`。
 
 ## 推理与检查
 

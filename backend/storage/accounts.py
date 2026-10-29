@@ -18,6 +18,11 @@ SESSION_MAX_AGE = 30 * 24 * 60 * 60
 SESSION_IDLE_AGE = 7 * 24 * 60 * 60
 LOGIN_WINDOW = 15 * 60
 LOGIN_MAX_FAILURES = 5
+REGISTRATION_TTL = 10 * 60
+REGISTRATION_COOLDOWN = 60
+REGISTRATION_WINDOW = 60 * 60
+REGISTRATION_MAX_SENDS = 5
+REGISTRATION_MAX_ATTEMPTS = 5
 PASSWORD_HASHER = PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1)
 _DUMMY_HASH = PASSWORD_HASHER.hash("a password that no account uses")
 _EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
@@ -32,6 +37,10 @@ class InvalidCredentialsError(ValueError):
 
 
 class RateLimitedError(ValueError):
+    pass
+
+
+class InvalidVerificationCodeError(ValueError):
     pass
 
 
@@ -78,6 +87,23 @@ def _connect():
             PRIMARY KEY (email, address)
         )
     """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS pending_registrations (
+            email TEXT PRIMARY KEY,
+            password_hash TEXT NOT NULL,
+            code_hash TEXT NOT NULL,
+            expires_at INTEGER NOT NULL,
+            sent_at INTEGER NOT NULL,
+            attempts INTEGER NOT NULL
+        )
+    """)
+    connection.execute("""
+        CREATE TABLE IF NOT EXISTS registration_sends (
+            email TEXT PRIMARY KEY,
+            window_start INTEGER NOT NULL,
+            sends INTEGER NOT NULL
+        )
+    """)
     return connection
 
 
@@ -93,6 +119,83 @@ def create_user(email, password):
             )
         except sqlite3.IntegrityError as error:
             raise DuplicateEmailError("这个邮箱已注册。") from error
+        return {"id": cursor.lastrowid, "email": email}
+
+
+def start_registration(email, password):
+    email = normalize_email(email)
+    validate_password(password)
+    now = int(time.time())
+    with closing(_connect()) as connection, connection:
+        connection.execute("BEGIN IMMEDIATE")
+        if connection.execute("SELECT 1 FROM users WHERE email = ?", (email,)).fetchone():
+            raise DuplicateEmailError("这个邮箱已注册。")
+        pending = connection.execute(
+            "SELECT sent_at FROM pending_registrations WHERE email = ?", (email,)
+        ).fetchone()
+        if pending and pending["sent_at"] + REGISTRATION_COOLDOWN > now:
+            raise RateLimitedError("验证码发送过于频繁，请稍后再试。")
+        send_limit = connection.execute(
+            "SELECT window_start, sends FROM registration_sends WHERE email = ?", (email,)
+        ).fetchone()
+        if send_limit and send_limit["window_start"] + REGISTRATION_WINDOW > now and send_limit["sends"] >= REGISTRATION_MAX_SENDS:
+            raise RateLimitedError("验证码请求过多，请一小时后再试。")
+        code = f"{secrets.randbelow(100_000_000):08d}"
+        code_hash = PASSWORD_HASHER.hash(code)
+        connection.execute(
+            "INSERT OR REPLACE INTO pending_registrations VALUES (?, ?, ?, ?, ?, 0)",
+            (email, PASSWORD_HASHER.hash(password), code_hash, now + REGISTRATION_TTL, now),
+        )
+        if not send_limit or send_limit["window_start"] + REGISTRATION_WINDOW <= now:
+            connection.execute("INSERT OR REPLACE INTO registration_sends VALUES (?, ?, 1)", (email, now))
+        else:
+            connection.execute("UPDATE registration_sends SET sends = sends + 1 WHERE email = ?", (email,))
+    return email, code, code_hash
+
+
+def cancel_registration(email, code_hash):
+    with closing(_connect()) as connection, connection:
+        connection.execute(
+            "DELETE FROM pending_registrations WHERE email = ? AND code_hash = ?", (email, code_hash)
+        )
+
+
+def complete_registration(email, code):
+    email = normalize_email(email)
+    if not re.fullmatch(r"[0-9]{8}", code):
+        raise InvalidVerificationCodeError("请输入 8 位数字验证码。")
+    now = int(time.time())
+    with closing(_connect()) as connection, connection:
+        connection.execute("BEGIN IMMEDIATE")
+        pending = connection.execute(
+            "SELECT password_hash, code_hash, expires_at, attempts FROM pending_registrations WHERE email = ?",
+            (email,),
+        ).fetchone()
+        if pending is None:
+            raise InvalidVerificationCodeError("验证码不存在或已失效，请重新发送。")
+        if pending["expires_at"] <= now:
+            connection.execute("DELETE FROM pending_registrations WHERE email = ?", (email,))
+            connection.commit()
+            raise InvalidVerificationCodeError("验证码已过期，请重新发送。")
+        try:
+            PASSWORD_HASHER.verify(pending["code_hash"], code)
+        except VerificationError:
+            attempts = pending["attempts"] + 1
+            if attempts >= REGISTRATION_MAX_ATTEMPTS:
+                connection.execute("DELETE FROM pending_registrations WHERE email = ?", (email,))
+                connection.commit()
+                raise RateLimitedError("验证码错误次数过多，请重新发送。")
+            connection.execute("UPDATE pending_registrations SET attempts = ? WHERE email = ?", (attempts, email))
+            connection.commit()
+            raise InvalidVerificationCodeError("验证码错误。")
+        try:
+            cursor = connection.execute(
+                "INSERT INTO users (email, password_hash, created_at) VALUES (?, ?, ?)",
+                (email, pending["password_hash"], now),
+            )
+        except sqlite3.IntegrityError as error:
+            raise DuplicateEmailError("这个邮箱已注册。") from error
+        connection.execute("DELETE FROM pending_registrations WHERE email = ?", (email,))
         return {"id": cursor.lastrowid, "email": email}
 
 

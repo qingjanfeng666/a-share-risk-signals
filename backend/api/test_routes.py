@@ -8,6 +8,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from backend.main import app
+from backend.services import email_delivery
 from backend.storage import accounts, user_results
 
 
@@ -23,7 +24,15 @@ class RiskRouteTests(unittest.TestCase):
         self.addCleanup(self.result_path.stop)
         self.addCleanup(self.directory.cleanup)
         self.client = TestClient(app)
-        self.client.post("/api/auth/register", json={"email": "routes@example.com", "password": "a long test password"})
+        sent_codes = []
+        configured = patch.object(email_delivery, "is_configured", return_value=True)
+        sender = patch.object(email_delivery, "send_verification_code", side_effect=lambda email, code: sent_codes.append(code))
+        configured.start()
+        sender.start()
+        self.addCleanup(configured.stop)
+        self.addCleanup(sender.stop)
+        self.assertEqual(self.client.post("/api/auth/register", json={"email": "routes@example.com", "password": "a long test password"}).status_code, 200)
+        self.assertEqual(self.client.post("/api/auth/verify", json={"email": "routes@example.com", "code": sent_codes[0]}).status_code, 200)
 
     def test_invalid_code_is_rejected_before_live_fetch(self):
         response = self.client.post("/api/stocks/abc/risk-latest")

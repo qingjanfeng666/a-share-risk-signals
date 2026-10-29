@@ -8,7 +8,7 @@
 
 - 查询最近收盘价、20 日走势、波动率、最大回撤与成交量变化，以及公告情绪和近期新闻。
 - 查看三路风险信号、模型分数、判定阈值与估计风险概率。
-- 注册本地账户并登录；会话保存在可撤销的 HttpOnly Cookie 中。每个账户的最新结果、查询历史与逐日趋势分别保存。
+- 通过邮箱验证码注册账户并登录；会话保存在可撤销的 HttpOnly Cookie 中。每个账户的最新结果、查询历史与逐日趋势分别保存。
 - 手动刷新并补算自首次成功查询以来缺失的交易日；展示最多最近 30 个交易日的模型分数。
 - 复现行情、文本、融合模型的训练和独立测试。训练数据与模型权重不随 Git 仓库发布。
 
@@ -64,6 +64,12 @@
    BACKEND_PORT=8000
    FRONTEND_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
    SESSION_COOKIE_SECURE=false
+   SMTP_HOST=smtp.example.com
+   SMTP_PORT=465
+   SMTP_SECURITY=ssl
+   SMTP_USERNAME=your-address@example.com
+   SMTP_PASSWORD=your-smtp-app-password
+   SMTP_FROM=your-address@example.com
    ```
 
 4. 在两个终端分别启动服务：
@@ -78,13 +84,13 @@
    npm run dev
    ```
 
-打开 <http://localhost:3000>，用邮箱和至少 12 个字符的密码注册。前端通过 Next.js 的 `/api` 转发访问后端；若后端地址不是 `http://127.0.0.1:8000`，在 `frontend/app/.env.local` 设置 `BACKEND_INTERNAL_URL` 并重启前端。Windows 和 WSL 不应共用同一个 `node_modules`，切换环境后在目标环境重新执行 `npm ci`。
+打开 <http://localhost:3000>，用邮箱和至少 12 个字符的密码申请注册，输入邮件中的 8 位验证码后才会创建账户并登录。SMTP 配置使用邮件服务商提供的服务器、端口和应用密码；若使用 587 端口，通常设 `SMTP_SECURITY=starttls`。未配置 SMTP 时注册接口返回 503，已有账户仍可登录。前端通过 Next.js 的 `/api` 转发访问后端；若后端地址不是 `http://127.0.0.1:8000`，在 `frontend/app/.env.local` 设置 `BACKEND_INTERNAL_URL` 并重启前端。Windows 和 WSL 不应共用同一个 `node_modules`，切换环境后在目标环境重新执行 `npm ci`。
 
 ## 账户与数据
 
 密码以 Argon2id 哈希保存；服务端只存会话令牌的哈希，Cookie 设置 `HttpOnly` 与 `SameSite=Lax`。登录会话绝对有效期为 30 天，连续 7 天未使用会失效；退出登录会撤销当前会话。登录失败有基础限速。数据库位于 `backend/data/app.db`，不提交 Git。账户的保存结果互相隔离；此前无账户版本的本地记录保留在旧表中，不自动归属任何账户。
 
-本地邮箱只用作登录标识，当前**没有邮件验证或密码找回**。面向公网部署前需补齐这两项，并配置 HTTPS、`SESSION_COOKIE_SECURE=true`、准确的 `FRONTEND_ORIGINS`、持久化数据库备份、注册接口限流和运行监控。不要把 `.env.local`、数据库、原始数据、模型权重或生成日志提交到 Git。
+新账户的验证码 10 分钟有效、只能使用一次；同一邮箱 60 秒内不可重发、每小时最多发送 5 次，连续输错 5 次后需重新申请。已有账户无需重新验证。当前**没有密码找回**。面向公网部署前还需增加代理层全局限流、配置 HTTPS、`SESSION_COOKIE_SECURE=true`、准确的 `FRONTEND_ORIGINS`、持久化数据库备份和运行监控。不要把 `.env.local`、数据库、原始数据、模型权重或生成日志提交到 Git。
 
 ## 检查与参考
 
