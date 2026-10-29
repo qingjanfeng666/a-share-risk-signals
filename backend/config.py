@@ -13,3 +13,4 @@ FRONTEND_ORIGINS = [
     for origin in (VALUES.get("FRONTEND_ORIGINS") or "http://localhost:3000,http://127.0.0.1:3000").split(",")
     if origin.strip()
 ]
+SESSION_COOKIE_SECURE = (VALUES.get("SESSION_COOKIE_SECURE") or "false").lower() == "true"

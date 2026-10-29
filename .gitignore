@@ -4,6 +4,8 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Frontend dependencies and build output
 node_modules/
@@ -28,6 +30,10 @@ next-env.d.ts
 /models/pretrained/
 /models/sentiment_macbert/
 /models/risk_pdf/
+*.log
+*.pid
+core
+core.*
 
 # OS and editor files
 .DS_Store

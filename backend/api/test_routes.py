@@ -1,18 +1,32 @@
 """Checks for stock-code validation and saved result listing."""
 
 import unittest
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from backend.main import app
+from backend.storage import accounts, user_results
 
 
 class RiskRouteTests(unittest.TestCase):
     def setUp(self):
+        self.directory = tempfile.TemporaryDirectory()
+        database = Path(self.directory.name) / "test.db"
+        self.account_path = patch.object(accounts, "DB_PATH", database)
+        self.result_path = patch.object(user_results, "DB_PATH", database)
+        self.account_path.start()
+        self.result_path.start()
+        self.addCleanup(self.account_path.stop)
+        self.addCleanup(self.result_path.stop)
+        self.addCleanup(self.directory.cleanup)
         self.client = TestClient(app)
+        self.client.post("/api/auth/register", json={"email": "routes@example.com", "password": "a long test password"})
 
     def test_invalid_code_is_rejected_before_live_fetch(self):
-        response = self.client.get("/api/stocks/abc/risk-latest")
+        response = self.client.post("/api/stocks/abc/risk-latest")
         self.assertEqual(response.status_code, 422)
 
         response = self.client.post("/api/stocks/abc/risk-refresh")

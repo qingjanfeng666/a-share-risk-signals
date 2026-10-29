@@ -45,7 +45,11 @@ type Latest = {
 type SavedRun = Latest & { id: number };
 type RunHistory = { total: number; items: SavedRun[] };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+async function apiFetch(path: string, init: RequestInit, onSessionExpired: () => void) {
+  const response = await fetch(path, { ...init, credentials: "same-origin" });
+  if (response.status === 401) onSessionExpired();
+  return response;
+}
 const modelNames: Record<ModelName, string> = {
   fusion: "综合判断",
   price: "行情信号",
@@ -179,7 +183,7 @@ async function readRefreshStream(response: Response, onEvent: (event: RefreshEve
   return completed[0];
 }
 
-export default function Dashboard() {
+export default function Dashboard({ email, onLogout, onSessionExpired, logoutBusy, logoutError }: { email: string; onLogout: () => void; onSessionExpired: () => void; logoutBusy: boolean; logoutError: string }) {
   const [selected, setSelected] = useState("300750");
   const [stockInput, setStockInput] = useState("300750");
   const [inputError, setInputError] = useState("");
@@ -209,7 +213,7 @@ export default function Dashboard() {
     }
     const controller = new AbortController();
     savedRequest.current = controller;
-    fetch(`${API_BASE}/api/stocks/${selected}/risk-latest-saved`, { signal: controller.signal, cache: "no-store" })
+    apiFetch(`/api/stocks/${selected}/risk-latest-saved`, { signal: controller.signal, cache: "no-store" }, onSessionExpired)
       .then(async (response) => {
         if (response.status === 404) return null;
         if (!response.ok) throw new Error("无法读取上次保存的结果");
@@ -228,12 +232,12 @@ export default function Dashboard() {
         if (!controller.signal.aborted) setSavedLoading(false);
       });
     return () => controller.abort();
-  }, [selected]);
+  }, [selected, onSessionExpired]);
 
   useEffect(() => {
     if (!runHistoryOpen) return;
     const controller = new AbortController();
-    fetch(`${API_BASE}/api/risk-runs`, { signal: controller.signal, cache: "no-store" })
+    apiFetch("/api/risk-runs", { signal: controller.signal, cache: "no-store" }, onSessionExpired)
       .then(async (response) => {
         if (!response.ok) throw new Error("无法读取历史结果");
         return response.json();
@@ -248,11 +252,11 @@ export default function Dashboard() {
         if (!controller.signal.aborted) setRunsLoading(false);
       });
     return () => controller.abort();
-  }, [selected, runHistoryOpen, runsRequest]);
+  }, [selected, runHistoryOpen, runsRequest, onSessionExpired]);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`${API_BASE}/api/stocks/${selected}/risk-trend`, { signal: controller.signal, cache: "no-store" })
+    apiFetch(`/api/stocks/${selected}/risk-trend`, { signal: controller.signal, cache: "no-store" }, onSessionExpired)
       .then(async (response) => {
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
@@ -274,7 +278,7 @@ export default function Dashboard() {
         if (!controller.signal.aborted) setHistoryLoading(false);
       });
     return () => controller.abort();
-  }, [selected, historyRequest]);
+  }, [selected, historyRequest, onSessionExpired]);
 
   function submitStock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -297,7 +301,7 @@ export default function Dashboard() {
     setLiveLoading(true);
     setRefreshProgress(null);
     try {
-      const response = await fetch(`${API_BASE}/api/stocks/${stock}/risk-refresh`, { method: "POST", signal: controller.signal, cache: "no-store" });
+      const response = await apiFetch(`/api/stocks/${stock}/risk-refresh`, { method: "POST", signal: controller.signal, cache: "no-store" }, onSessionExpired);
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.detail ?? `接口返回 ${response.status}`);
@@ -363,7 +367,7 @@ export default function Dashboard() {
       <header className="site-header"><div className="header-inner">
         <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
         <div className="brand-copy"><strong>股市风险观察</strong><span>短期风险信号</span></div>
-        <span className="header-note">课程研究演示</span>
+        <span className="header-note">{email}</span>{logoutError && <span className="auth-error" role="alert">{logoutError}</span>}<button className="logout-button" type="button" onClick={onLogout} disabled={logoutBusy}>退出登录</button>
       </div></header>
 
       <main className="page-container">
@@ -395,7 +399,7 @@ export default function Dashboard() {
             {runsLoading && <p className="muted-copy" role="status">正在读取历史结果…</p>}
             {runsError && <p className="inline-feedback is-error" role="alert">{runsError}</p>}
             {!runsLoading && !runsError && runHistory && (runHistory.items.length
-              ? <><p className="run-count">共 {runHistory.total} 条，按获取顺序排列</p><div className="run-list">{runHistory.items.map((run) => <details className="run-item" key={run.id}>
+              ? <><p className="run-count">共 {runHistory.total} 条，显示最近 {runHistory.items.length} 条</p><div className="run-list">{runHistory.items.map((run) => <details className="run-item" key={run.id}>
                 <summary><span><strong>{run.stock.name !== run.stock.code ? `${run.stock.name} · ` : ""}{run.stock.code}</strong><small>基准日 {dateLabel(run.as_of)} · 获取于 {timeLabel(run.fetched_at)}</small></span><span className={run.models.fusion.alert ? "run-alert" : "run-calm"}>{run.models.fusion.alert ? "触发预警" : "未触发预警"}</span></summary>
                 <div className="run-detail"><p>综合分数 {score(run.models.fusion.score)} · 行情分数 {score(run.models.price.score)} · 公告分数 {score(run.models.text.score)}</p>
                   <p>最近收盘价 {run.price_window.last_close.toFixed(2)} 元 · 行情来源 {run.price_source}</p>
@@ -498,7 +502,7 @@ export default function Dashboard() {
           </div>
         </section>
       </main>
-      <footer className="site-footer"><span>股市风险观察 · 课程研究演示</span><p>模型结果用于课程实验，不构成投资建议。没有预警也不代表没有风险。</p></footer>
+      <footer className="site-footer"><span>股市风险观察</span><p>模型信号仅供风险观察，不构成投资建议。没有预警也不代表没有风险。</p></footer>
     </div>
   );
 }
